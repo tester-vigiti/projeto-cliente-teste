@@ -1,0 +1,47 @@
+# Nome do fluxo de trabalho que aparecerá na aba "Actions" do GitHub.
+name: 'VIGITI Code Analysis'
+
+# Define que esta análise deve rodar em cada push ou pull request para a branch main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Permissões necessárias para a Action funcionar corretamente.
+permissions:
+  security-events: write
+  contents: read
+
+jobs:
+  vigiti-code-analysis:
+    name: VIGITI Code Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Baixa o código do seu projeto para a máquina de análise.
+      - name: 'Checkout code'
+        uses: actions/checkout@v4
+
+      # 2. Executa a análise de segurança e compliance com o VIGITI Code.
+      - name: 'Run VIGITI Code Analysis'
+        # Esta é a Action oficial do VIGITI Code.
+        uses: vigiti-code/vigiti-action@v1 # <-- ATENÇÃO: Este caminho será o oficial da sua Action.
+        with:
+          # Lê o token de forma segura dos segredos que você configurou no Passo 1.
+          token: ${{ secrets.VIGITI_TOKEN }}
+
+          # Define que o workflow irá falhar se encontrar violações de nível 'high' ou 'critical'.
+          fail-on: 'high'
+
+          vigiti-api-url: 'https://vigiti-code.onrender.com'
+
+          # Define as linguagens a serem analisadas no projeto.
+          languages: 'js,ts,python,java'
+
+      # 3. Envia os resultados para a aba "Security" do seu repositório.
+      - name: 'Upload SARIF to GitHub Security'
+        if: always() # Garante que os resultados sejam enviados mesmo que o passo anterior falhe.
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'out/results.sarif'
