@@ -27,7 +27,7 @@ jobs:
       - name: 'Run Vigiti Code Analysis'
         # CORREÇÃO 1: Aponta diretamente para sua imagem pública no Docker Hub.
         # Substitua 'seu-usuario-dockerhub' pelo seu nome de usuário real.
-        uses: docker://seu-usuario-dockerhub/runner:v1.0.0-mvp
+        uses: docker://smmyth/vigiti-runner:v1.0.0-mvp
         with:
           # Lê o token de forma segura dos segredos do repositório.
           token: ${{ secrets.VIGITI_TOKEN }}
