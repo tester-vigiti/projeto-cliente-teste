@@ -1,4 +1,4 @@
-// src/services.jsNH
+// src/services.js
 function processUserData(user) {
   const userData = {
     name: user.name,
