@@ -1,47 +1,49 @@
 # Nome do fluxo de trabalho que aparecerá na aba "Actions" do GitHub.
-name: 'VIGITI Code Analysis'
+name: 'Vigiti Code Analysis'
 
 # Define que esta análise deve rodar em cada push ou pull request para a branch main.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 # Permissões necessárias para a Action funcionar corretamente.
 permissions:
-  security-events: write
-  contents: read
+  security-events: write
+  contents: read
 
 jobs:
-  vigiti-code-analysis:
-    name: VIGITI Code Analysis
-    runs-on: ubuntu-latest
+  vigiti-code-analysis:
+    name: Vigiti Code Analysis
+    runs-on: ubuntu-latest
 
-    steps:
-      # 1. Baixa o código do seu projeto para a máquina de análise.
-      - name: 'Checkout code'
-        uses: actions/checkout@v4
+    steps:
+      # 1. Baixa o código do seu projeto para a máquina de análise.
+      - name: 'Checkout code'
+        uses: actions/checkout@v4
 
-      # 2. Executa a análise de segurança e compliance com o VIGITI Code.
-      - name: 'Run VIGITI Code Analysis'
-        # Esta é a Action oficial do VIGITI Code.
-        uses: vigiti-code/vigiti-action@v1 # <-- ATENÇÃO: Este caminho será o oficial da sua Action.
-        with:
-          # Lê o token de forma segura dos segredos que você configurou no Passo 1.
-          token: ${{ secrets.VIGITI_TOKEN }}
+      # 2. Executa a análise de segurança e compliance com o Vigiti Code.
+      - name: 'Run Vigiti Code Analysis'
+        # CORREÇÃO 1: Aponta diretamente para sua imagem pública no Docker Hub.
+        # Substitua 'seu-usuario-dockerhub' pelo seu nome de usuário real.
+        uses: docker://seu-usuario-dockerhub/runner:v1.0.0-mvp
+        with:
+          # Lê o token de forma segura dos segredos do repositório.
+          token: ${{ secrets.VIGITI_TOKEN }}
 
-          # Define que o workflow irá falhar se encontrar violações de nível 'high' ou 'critical'.
-          fail-on: 'high'
+          # Define que o workflow irá falhar se encontrar violações de nível 'high' ou 'critical'.
+          fail-on: 'high'
 
-          vigiti-api-url: 'https://vigiti-code.onrender.com'
+          # CORREÇÃO 2: Aponta para o endereço correto do seu serviço no Google Cloud Run.
+          vigiti-api-url: 'https://runner-278759733579.southamerica-east1.run.app' # <-- SUBSTITUA PELA SUA URL REAL DO CLOUD RUN
 
-          # Define as linguagens a serem analisadas no projeto.
-          languages: 'js,ts,python,java'
+          # Define as linguagens a serem analisadas no projeto.
+          languages: 'js,ts,python,java'
 
-      # 3. Envia os resultados para a aba "Security" do seu repositório.
-      - name: 'Upload SARIF to GitHub Security'
-        if: always() # Garante que os resultados sejam enviados mesmo que o passo anterior falhe.
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'out/results.sarif'
+      # 3. Envia os resultados para a aba "Security" do seu repositório.
+      - name: 'Upload SARIF to GitHub Security'
+        if: always() # Garante que os resultados sejam enviados mesmo que o passo anterior falhe.
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'out/results.sarif'
