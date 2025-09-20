@@ -23,20 +23,23 @@ jobs:
       - name: 'Checkout code'
         uses: actions/checkout@v4
 
-      # 2. Executa a análise de segurança e compliance com o Vigiti Code.
+      # 2. Executa a análise de segurança e compliance com o VIGITI Code.
       - name: 'Run Vigiti Code Analysis'
-        # CORREÇÃO 1: Aponta diretamente para sua imagem pública no Docker Hub.
-        # Substitua 'seu-usuario-dockerhub' pelo seu nome de usuário real.
-        uses: docker://smmyth/vigiti-runner:v1.0.0-mvp
-        with:
-          # Lê o token de forma segura dos segredos do repositório.
-          token: ${{ secrets.VIGITI_TOKEN }}
-          # Define que o workflow irá falhar se encontrar violações de nível 'high' ou 'critical'.
-          fail-on: 'high'
-          # CORREÇÃO 2: Aponta para o endereço correto do seu serviço no Google Cloud Run.
-          vigiti-api-url: 'https://runner-278759733579.southamerica-east1.run.app' # <-- SUBSTITUA PELA SUA URL REAL DO CLOUD RUN
-          # Define as linguagens a serem analisadas no projeto.
-          languages: 'js,ts,python,java'
+        run: |
+          # Cria o diretório de saída no ambiente da Action
+          mkdir -p ${{ github.workspace }}/out
+          
+          # Executa o contêiner Docker, mapeando o código e o diretório de saída
+          docker run --rm \
+            -v "${{ github.workspace }}:/github/workspace:ro" \
+            -v "${{ github.workspace }}/out:/github/workspace/out:rw" \
+            -e VIGITI_TOKEN="${{ secrets.VIGITI_TOKEN }}" \
+            -e VIGITI_API_URL="SUA_URL_DO_CLOUD_RUN_AQUI" \
+            smmyth/vigiti-runner:v1.0.0-mvp
+        env:
+          # É importante passar as variáveis de ambiente aqui também
+          VIGITI_TOKEN: ${{ secrets.VIGITI_TOKEN }}
+          VIGITI_API_URL: 'https://runner-278759733579.southamerica-east1.run.app' # Substitua pela sua URL real
 
       # 3. Envia os resultados para a aba "Security" do seu repositório.
       - name: 'Upload SARIF to GitHub Security'
