@@ -7,49 +7,63 @@ on:
     branches: [main]
 
 permissions:
-  security-events: write
   contents: read
+  security-events: write
 
 jobs:
   vigiti-code-analysis:
     name: Vigiti Code Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: 'Checkout code'
         uses: actions/checkout@v4
 
       - name: 'Prepare output dir'
-        run: mkdir -p out
+        run: |
+          rm -rf out
+          mkdir -p out
 
-      - name: 'Run Vigiti Code Analysis'
-        # Se você versionou a imagem corrigida, troque o tag abaixo (ex.: v1.0.1)
-        uses: docker://smmyth/vigiti-runner:v1.0.0-mvp
+      # Em PRs de forks os secrets não são injetados; este if evita falha nesse cenário
+      - name: 'Run Vigiti Code Analysis (Docker manual)'
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         env:
           VIGITI_TOKEN: ${{ secrets.VIGITI_TOKEN }}
           VIGITI_API_URL: 'https://runner-278759733579.southamerica-east1.run.app'
-          OUTPUT_DIR: '/github/workspace/out'
-        with:
-          args: >
-            scan
-            --path /github/workspace
-            --output /github/workspace/out
-            --summary
-            --ropa
-            --sarif /github/workspace/out/results.sarif
-            --debug
+        run: |
+          set -euo pipefail
+          docker pull smmyth/vigiti-runner:v1.0.0-mvp
+          docker run --rm \
+            -e VIGITI_TOKEN \
+            -e VIGITI_API_URL \
+            -w /github/workspace \
+            -v "$PWD":/github/workspace \
+            -v "$PWD":/work \
+            smmyth/vigiti-runner:v1.0.0-mvp \
+            scan \
+              --path /github/workspace \
+              --output /work/out \
+              --summary \
+              --ropa \
+              --sarif /work/out/results.sarif \
+              --debug
+          echo "Conteúdo gerado em ./out:"
+          ls -la out || true
 
       - name: 'Upload SARIF to GitHub Security'
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'out/results.sarif'
           checkout_path: ${{ github.workspace }}
           wait-for-processing: true
 
-      # Opcional: manter artefatos para auditoria/depuração.
       - name: 'Upload analysis artifacts'
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: vigiti-out
           path: out/**
+          if-no-files-found: warn
+
