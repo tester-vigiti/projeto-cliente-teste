@@ -5,7 +5,7 @@ function processUserData(user) {
     cpf: user.cpf, // CPF de e
       };
 
-  // Violação intencional: Log de PII (CPF) sem mascaramento
+  // Violação intencional: Log de PII (CPF) sem mascaramento.
   console.log('Processing user data for CPF:', userData.cpf);
 
   //... resto da lógica de negócio
