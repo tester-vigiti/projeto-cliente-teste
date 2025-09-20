@@ -1,14 +1,11 @@
-# Nome do fluxo de trabalho que aparecerá na aba "Actions" do GitHub.
 name: 'Vigiti Code Analysis'
 
-# Define que esta análise deve rodar em cada push ou pull request para a branch main.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-# Permissões necessárias para a Action funcionar corretamente.
 permissions:
   security-events: write
   contents: read
@@ -19,36 +16,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Baixa o código do seu projeto para a máquina de análise.
       - name: 'Checkout code'
         uses: actions/checkout@v4
 
-      # 2. Executa a análise de segurança e compliance com o VIGITI Code.
       - name: 'Run Vigiti Code Analysis'
-        run: |
-          # Cria o diretório de saída no ambiente da Action para receber os resultados
-          mkdir -p ${{ github.workspace }}/out
-          
-          # Executa o contêiner Docker, mapeando volumes e passando variáveis essenciais
-          docker run --rm \
-            -v "${{ github.workspace }}:/github/workspace:ro" \
-            -v "${{ github.workspace }}/out:/work/out:rw" \
-            -e VIGITI_TOKEN \
-            -e VIGITI_API_URL \
-            -e GITHUB_WORKSPACE="/github/workspace" \
-            -e OUTPUT_DIR="/work/out" \
-            smmyth/vigiti-runner:v1.0.0-mvp
-            scan --path /github/workspace --output /work/out --summary --sarif /work/out/results.sarif --ropa --debug
-            
+        # Usamos 'uses' para definir a imagem e o ambiente
+        uses: docker://smmyth/vigiti-runner:v1.0.0-mvp
         env:
-          # Define as variáveis de ambiente que serão passadas para o contêiner
+          # As variáveis de ambiente ficam disponíveis para o entrypoint
           VIGITI_TOKEN: ${{ secrets.VIGITI_TOKEN }}
           VIGITI_API_URL: 'https://runner-278759733579.southamerica-east1.run.app'
-          GITHUB_WORKSPACE: ${{ github.workspace }}
           
-      # 3. Envia os resultados para a aba "Security" do seu repositório.
+          # Passamos o diretório de saída que o entrypoint deve usar
+          OUTPUT_DIR: '/github/workspace/out'
+        with:
+          # Os argumentos para o entrypoint são passados aqui
+          args: >
+            scan
+            --path /github/workspace
+            --output /github/workspace/out
+            --summary
+            --ropa
+            --sarif /github/workspace/out/results.sarif
+            --debug
+
       - name: 'Upload SARIF to GitHub Security'
-        if: always() # Garante que os resultados sejam enviados mesmo que o passo anterior falhe.
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'out/results.sarif'
+          
