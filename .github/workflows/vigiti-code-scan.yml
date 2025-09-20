@@ -25,41 +25,67 @@ jobs:
           rm -rf out
           mkdir -p out
 
-      # Em PRs de forks os secrets não são injetados; este if evita falha nesse cenário
-      - name: 'Run Vigiti Code Analysis (Docker manual)'
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      - name: 'Run VIGITI Runner (Docker manual)'
+        id: scan
         env:
           VIGITI_TOKEN: ${{ secrets.VIGITI_TOKEN }}
           VIGITI_API_URL: 'https://runner-278759733579.southamerica-east1.run.app'
+        shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+
+          # Habilita upload ao control-plane apenas se houver token
+          UPLOAD_ENV=()
+          if [[ -n "${VIGITI_TOKEN:-}" ]]; then
+            echo "Token presente: upload ao control-plane habilitado."
+            UPLOAD_ENV+=(-e VIGITI_TOKEN -e VIGITI_API_URL)
+          else
+            echo "Token ausente: rodando em modo offline (sem upload ao control-plane)."
+          fi
+
           docker pull smmyth/vigiti-runner:v1.0.0-mvp
+
+          # Executa o scan, captura stdout/stderr em log e também o exit code real
+          set +e
           docker run --rm \
-            -e VIGITI_TOKEN \
-            -e VIGITI_API_URL \
+            "${UPLOAD_ENV[@]}" \
             -w /github/workspace \
             -v "$PWD":/github/workspace \
-            -v "$PWD":/work \
             smmyth/vigiti-runner:v1.0.0-mvp \
             scan \
               --path /github/workspace \
-              --output /work/out \
+              --output /github/workspace/out \
               --summary \
               --ropa \
-              --sarif /work/out/results.sarif \
-              --debug
-          echo "Conteúdo gerado em ./out:"
+              --sarif /github/workspace/out/results.sarif \
+              --debug \
+          |& tee out/runner.log
+          RC=${PIPESTATUS[0]}
+          set -e
+
+          echo "$RC" > out/runner-exitcode.txt
+          echo "exit_code=$RC" >> "$GITHUB_OUTPUT"
+
+          echo "Conteúdo de ./out após o scan:"
           ls -la out || true
 
-      - name: 'Upload SARIF to GitHub Security'
-        if: always()
+          if [[ $RC -ne 0 ]]; then
+            echo "::warning::VIGITI Runner retornou exit code $RC. Veja out/runner.log para detalhes."
+          fi
+
+      - name: 'Upload SARIF to GitHub Security (se existir)'
+        if: ${{ hashFiles('out/results.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'out/results.sarif'
-          checkout_path: ${{ github.workspace }}
-          wait-for-processing: true
+            sarif_file: 'out/results.sarif'
+            checkout_path: ${{ github.workspace }}
+            wait-for-processing: true
 
-      - name: 'Upload analysis artifacts'
+      - name: 'Aviso: SARIF ausente'
+        if: ${{ hashFiles('out/results.sarif') == '' }}
+        run: echo "SARIF não encontrado. Veja out/runner.log para o erro detalhado."
+
+      - name: 'Upload analysis artifacts (logs e outputs)'
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -67,3 +93,9 @@ jobs:
           path: out/**
           if-no-files-found: warn
 
+      # Falha o job no fim se o scan não retornou 0
+      - name: 'Fail if scan failed'
+        if: ${{ steps.scan.outputs.exit_code != '0' }}
+        run: |
+          echo "Falha na análise (exit code ${{ steps.scan.outputs.exit_code }}). Consulte o artifact 'vigiti-out' (runner.log)."
+          exit 1
