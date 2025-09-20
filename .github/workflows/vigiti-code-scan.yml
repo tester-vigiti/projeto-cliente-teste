@@ -35,6 +35,7 @@ jobs:
             -v "${{ github.workspace }}/out:/github/workspace/out:rw" \
             -e VIGITI_TOKEN="${{ secrets.VIGITI_TOKEN }}" \
             -e VIGITI_API_URL="SUA_URL_DO_CLOUD_RUN_AQUI" \
+            -e GITHUB_WORKSPACE="/github/workspace" \
             smmyth/vigiti-runner:v1.0.0-mvp
         env:
           # É importante passar as variáveis de ambiente aqui também
