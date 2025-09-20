@@ -23,7 +23,7 @@ jobs:
       - name: 'Checkout code'
         uses: actions/checkout@v4
 
-      # 2. Executa a análise de segurança e compliance com o VIGITI Code.# 2. Executa a análise de segurança e compliance com o Vigiti Code.
+      # 2. Executa a análise de segurança e compliance com o VIGITI Code.
       - name: 'Run Vigiti Code Analysis'
         run: |
           # Cria o diretório de saída no ambiente da Action para receber os resultados
@@ -41,7 +41,8 @@ jobs:
         env:
           # Define as variáveis de ambiente que serão passadas para o contêiner
           VIGITI_TOKEN: ${{ secrets.VIGITI_TOKEN }}
-          VIGITI_API_URL: 'https://runner-278759733579.southamerica-east1.run.app' # Substitua pela sua URL real
+          VIGITI_API_URL: 'https://runner-278759733579.southamerica-east1.run.app'
+          GITHUB_WORKSPACE: ${{ github.workspace }}
           
       # 3. Envia os resultados para a aba "Security" do seu repositório.
       - name: 'Upload SARIF to GitHub Security'
