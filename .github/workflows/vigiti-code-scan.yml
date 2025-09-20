@@ -38,6 +38,8 @@ jobs:
             -e GITHUB_WORKSPACE="/github/workspace" \
             -e OUTPUT_DIR="/work/out" \
             smmyth/vigiti-runner:v1.0.0-mvp
+            scan --path /github/workspace --output /work/out --summary --sarif /work/out/results.sarif --ropa --debug
+            
         env:
           # Define as variáveis de ambiente que serão passadas para o contêiner
           VIGITI_TOKEN: ${{ secrets.VIGITI_TOKEN }}
