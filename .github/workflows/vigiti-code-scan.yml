@@ -19,7 +19,11 @@ jobs:
       - name: 'Checkout code'
         uses: actions/checkout@v4
 
+      - name: 'Prepare output dir'
+        run: mkdir -p out
+
       - name: 'Run Vigiti Code Analysis'
+        # Se você versionou a imagem corrigida, troque o tag abaixo (ex.: v1.0.1)
         uses: docker://smmyth/vigiti-runner:v1.0.0-mvp
         env:
           VIGITI_TOKEN: ${{ secrets.VIGITI_TOKEN }}
@@ -36,7 +40,16 @@ jobs:
             --debug
 
       - name: 'Upload SARIF to GitHub Security'
-        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'out/results.sarif'
+          checkout_path: ${{ github.workspace }}
+          wait-for-processing: true
+
+      # Opcional: manter artefatos para auditoria/depuração
+      - name: 'Upload analysis artifacts'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vigiti-out
+          path: out/**
