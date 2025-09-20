@@ -46,7 +46,7 @@ jobs:
           checkout_path: ${{ github.workspace }}
           wait-for-processing: true
 
-      # Opcional: manter artefatos para auditoria/depuração
+      # Opcional: manter artefatos para auditoria/depuração.
       - name: 'Upload analysis artifacts'
         if: always()
         uses: actions/upload-artifact@v4
