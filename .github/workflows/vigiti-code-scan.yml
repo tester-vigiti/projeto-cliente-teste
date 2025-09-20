@@ -35,33 +35,43 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          # Habilita upload ao control-plane apenas se houver token
-          UPLOAD_ENV=()
-          if [[ -n "${VIGITI_TOKEN:-}" ]]; then
-            echo "Token presente: upload ao control-plane habilitado."
-            UPLOAD_ENV+=(-e VIGITI_TOKEN -e VIGITI_API_URL)
-          else
-            echo "Token ausente: rodando em modo offline (sem upload ao control-plane)."
-          fi
-
           docker pull smmyth/vigiti-runner:v1.0.0-mvp
 
           # Executa o scan e espelha o log para arquivo
           set +e
-          docker run --rm \
-            --user 0:0 \                       # roda como root para evitar EACCES
-            -w /github/workspace \
-            -v "$PWD":/github/workspace \
-            "${UPLOAD_ENV[@]}" \
-            smmyth/vigiti-runner:v1.0.0-mvp \
-            scan \
-              --path /github/workspace \
-              --output /github/workspace/out \
-              --summary \
-              --ropa \
-              --sarif /github/workspace/out/results.sarif \
-              --debug \
-          |& tee out/runner.log
+          if [[ -n "${VIGITI_TOKEN:-}" ]]; then
+            echo "Token presente: upload ao control-plane habilitado."
+            docker run --rm \
+              --user 0:0 \
+              -w /github/workspace \
+              -v "$PWD":/github/workspace \
+              -e VIGITI_TOKEN \
+              -e VIGITI_API_URL \
+              smmyth/vigiti-runner:v1.0.0-mvp \
+              scan \
+                --path /github/workspace \
+                --output /github/workspace/out \
+                --summary \
+                --ropa \
+                --sarif /github/workspace/out/results.sarif \
+                --debug \
+            |& tee out/runner.log
+          else
+            echo "Token ausente: rodando em modo offline (sem upload ao control-plane)."
+            docker run --rm \
+              --user 0:0 \
+              -w /github/workspace \
+              -v "$PWD":/github/workspace \
+              smmyth/vigiti-runner:v1.0.0-mvp \
+              scan \
+                --path /github/workspace \
+                --output /github/workspace/out \
+                --summary \
+                --ropa \
+                --sarif /github/workspace/out/results.sarif \
+                --debug \
+            |& tee out/runner.log
+          fi
           RC=${PIPESTATUS[0]}
           set -e
 
