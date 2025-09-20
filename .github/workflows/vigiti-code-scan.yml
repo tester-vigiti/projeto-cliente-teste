@@ -36,6 +36,7 @@ jobs:
             -e VIGITI_TOKEN \
             -e VIGITI_API_URL \
             -e GITHUB_WORKSPACE="/github/workspace" \
+            -e OUTPUT_DIR="/work/out" \
             smmyth/vigiti-runner:v1.0.0-mvp
         env:
           # Define as variáveis de ambiente que serão passadas para o contêiner
