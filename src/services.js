@@ -2,7 +2,7 @@
 function processUserData(user) {
   const userData = {
     name: user.name,
-    cpf: user.cpf, // CPF de exm
+    cpf: user.cpf, // CPF de exmp
   };
 
   // Violação intencional: Log de PII (CPF) sem mascaramento
