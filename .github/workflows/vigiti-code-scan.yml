@@ -25,7 +25,7 @@ jobs:
           rm -rf out
           mkdir -p out
 
-      - name: 'Run VIGITI Runner (Docker manual)'
+      - name: 'Run VIGITI Runner'
         id: scan
         env:
           VIGITI_TOKEN: ${{ secrets.VIGITI_TOKEN }}
@@ -45,7 +45,7 @@ jobs:
 
           docker pull smmyth/vigiti-runner:v1.0.0-mvp
 
-          # Executa o scan, captura stdout/stderr em log e também o exit code real
+          # Executa o scan e espelha o log para arquivo
           set +e
           docker run --rm \
             "${UPLOAD_ENV[@]}" \
@@ -69,21 +69,40 @@ jobs:
           echo "Conteúdo de ./out após o scan:"
           ls -la out || true
 
-          if [[ $RC -ne 0 ]]; then
-            echo "::warning::VIGITI Runner retornou exit code $RC. Veja out/runner.log para detalhes."
-          fi
+      # Se o SARIF não existir (porque o runner quebrou antes), gera um SARIF mínimo de contingência
+      - name: 'Generate fallback SARIF if missing'
+        if: ${{ hashFiles('out/results.sarif') == '' }}
+        shell: bash
+        run: |
+          cat > out/results.sarif << 'EOF'
+          {
+            "version": "2.1.0",
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "runs": [{
+              "tool": {
+                "driver": {
+                  "name": "VIGITI Code",
+                  "informationUri": "https://example.com/vigiti-code",
+                  "rules": []
+                }
+              },
+              "invocations": [{
+                "executionSuccessful": false,
+                "workingDirectory": { "uri": "file:///github/workspace" },
+                "properties": { "note": "Runner falhou antes de gerar o SARIF real. Verifique out/runner.log." }
+              }],
+              "results": []
+            }]
+          }
+          EOF
+          echo "SARIF de contingência gerado em out/results.sarif"
 
-      - name: 'Upload SARIF to GitHub Security (se existir)'
-        if: ${{ hashFiles('out/results.sarif') != '' }}
+      - name: 'Upload SARIF to GitHub Security'
         uses: github/codeql-action/upload-sarif@v3
         with:
-            sarif_file: 'out/results.sarif'
-            checkout_path: ${{ github.workspace }}
-            wait-for-processing: true
-
-      - name: 'Aviso: SARIF ausente'
-        if: ${{ hashFiles('out/results.sarif') == '' }}
-        run: echo "SARIF não encontrado. Veja out/runner.log para o erro detalhado."
+          sarif_file: 'out/results.sarif'
+          checkout_path: ${{ github.workspace }}
+          wait-for-processing: true
 
       - name: 'Upload analysis artifacts (logs e outputs)'
         if: always()
@@ -93,9 +112,10 @@ jobs:
           path: out/**
           if-no-files-found: warn
 
-      # Falha o job no fim se o scan não retornou 0
+      # Falha o job no fim se o runner não terminou com sucesso
       - name: 'Fail if scan failed'
         if: ${{ steps.scan.outputs.exit_code != '0' }}
         run: |
           echo "Falha na análise (exit code ${{ steps.scan.outputs.exit_code }}). Consulte o artifact 'vigiti-out' (runner.log)."
           exit 1
+
