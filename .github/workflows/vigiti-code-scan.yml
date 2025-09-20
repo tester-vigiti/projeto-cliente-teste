@@ -20,15 +20,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 'Run Vigiti Code Analysis'
-        # Aponta para a imagem Docker correta e passa os argumentos
         uses: docker://smmyth/vigiti-runner:v1.0.0-mvp
         env:
-          # As variáveis de ambiente ficam disponíveis para o entrypoint
           VIGITI_TOKEN: ${{ secrets.VIGITI_TOKEN }}
           VIGITI_API_URL: 'https://runner-278759733579.southamerica-east1.run.app'
           OUTPUT_DIR: '/github/workspace/out'
         with:
-          # Os argumentos para o entrypoint são passados aqui
           args: >
             scan
             --path /github/workspace
@@ -43,4 +40,3 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'out/results.sarif'
-          
