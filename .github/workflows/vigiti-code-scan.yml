@@ -124,7 +124,7 @@ jobs:
           path: out/**
           if-no-files-found: warn
 
-      # Falha o job no fim se o scan não terminou com sucesso
+      # Falha o job no fim se o scan não terminou com sucesso...
       - name: 'Fail if scan failed'
         if: ${{ steps.scan.outputs.exit_code != '0' }}
         run: |
