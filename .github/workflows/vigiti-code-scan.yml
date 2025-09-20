@@ -24,6 +24,7 @@ jobs:
         run: |
           rm -rf out
           mkdir -p out
+          chmod 777 out   # garantir escrita pelo processo dentro do container
 
       - name: 'Run VIGITI Runner'
         id: scan
@@ -48,9 +49,10 @@ jobs:
           # Executa o scan e espelha o log para arquivo
           set +e
           docker run --rm \
-            "${UPLOAD_ENV[@]}" \
+            --user 0:0 \                       # roda como root para evitar EACCES
             -w /github/workspace \
             -v "$PWD":/github/workspace \
+            "${UPLOAD_ENV[@]}" \
             smmyth/vigiti-runner:v1.0.0-mvp \
             scan \
               --path /github/workspace \
@@ -112,10 +114,9 @@ jobs:
           path: out/**
           if-no-files-found: warn
 
-      # Falha o job no fim se o runner não terminou com sucesso
+      # Falha o job no fim se o scan não terminou com sucesso
       - name: 'Fail if scan failed'
         if: ${{ steps.scan.outputs.exit_code != '0' }}
         run: |
           echo "Falha na análise (exit code ${{ steps.scan.outputs.exit_code }}). Consulte o artifact 'vigiti-out' (runner.log)."
           exit 1
-
